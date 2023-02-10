@@ -1,0 +1,132 @@
+version: "3.8"
+
+services:
+
+  traefik:
+    image: "traefik:latest"
+    container_name: "traefik"
+    restart: unless-stopped
+    command: --configFile=/configs/traefik.yml
+    ports:
+      - "443:443"
+    volumes:
+      - ./configs:/configs
+      - traefik:/etc/traefik
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik:/var/log/traefik/
+    # comment the following to disable your traefik dashboard via DNS (not usually run in production. Good to troubleshoot errors)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=(Host(`PutYourDNSHostNameHere`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`)))"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.tls.certresolver=production"
+      - "traefik.http.services.dashboard.loadbalancer.server.port=8080"
+      - "traefik.http.routers.dashboard.middlewares=dashboard-auth@docker"
+      #loki/password (with $$ escapes)
+      - "traefik.http.middlewares.dashboard-auth.basicauth.users=loki:$$apr1$$GuFbxxSF$$kOm1PYEpAppW8k4BQyrW6."
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    restart: unless-stopped
+
+    volumes:
+      - prometheus_data:/prometheus
+      - ./configs/prometheus:/configs
+    # ports:
+    #   - 9090:9090
+    command:
+      - "--config.file=/configs/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    restart: unless-stopped
+    # ports:
+    #   - "9093:9093"
+    volumes:
+      - "./configs/prometheus:/config"
+      - alertmanager-data:/data
+    command: --config.file=/config/alertmanager.yml
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: grafana
+    restart: unless-stopped
+    # ports:
+    #   - 3000:3000
+    command: --config=/etc/grafana/grafana.ini
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./configs/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./configs/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./configs/grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./configs/grafana/plugins:/var/lib/grafana/plugins
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    labels:
+      - "org.label-schema.group=monitoring"
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=(Host(`PutYourDNSHostNameHere`) && PathPrefix(`/grafana`))"
+      - "traefik.http.routers.grafana.service=grafana"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls.certresolver=production"
+      - "traefik.http.routers.grafana.middlewares=grafana-stripprefix"
+      - "traefik.http.middlewares.grafana-stripprefix.stripprefix.prefixes=/grafana"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+  loki:
+    container_name: loki
+    image: grafana/loki:2.7.1
+    restart: unless-stopped
+    depends_on:
+      - traefik
+    volumes:
+      - loki_data:/loki
+      - ./configs/loki:/configs
+      # See docs on 'fake' tenant: https://github.com/grafana/loki/issues/5459
+      - ./configs/rules/fake/rules.yml:/etc/loki/rules/fake/rules.yml
+    command: -config.file=/configs/loki.yml -print-config-stderr
+    labels:
+      - "traefik.enable=true"
+
+      # routes for TLS verification
+      - "traefik.http.routers.wellknown.rule=Host(`PutYourDNSHostNameHere`) && PathPrefix(`/.well-known`)"
+      - "traefik.http.routers.wellknown.service=api@internal"
+      - "traefik.http.routers.wellknown.entrypoints=websecure"
+      - "traefik.http.routers.wellknown.tls.certresolver=production"
+
+      # routers for loki apis
+      - "traefik.http.routers.loki-api.rule=(Host(`PutYourDNSHostNameHere`) && PathPrefix(`/loki/api`))"
+      - "traefik.http.routers.loki-api.service=loki"
+      - "traefik.http.routers.loki-api.entrypoints=websecure"
+      - "traefik.http.routers.loki-api.tls.certresolver=production"
+      - "traefik.http.routers.loki-api.middlewares=auth@docker"
+
+      # routes for Loki metrics, configs, ready endpoints
+      - "traefik.http.routers.metrics.rule=Host(`PutYourDNSHostNameHere`) && PathPrefix(`/loki`)"
+      - "traefik.http.routers.metrics.service=loki"
+      - "traefik.http.routers.metrics.entrypoints=websecure"
+      - "traefik.http.routers.metrics.tls.certresolver=production"
+      - "traefik.http.routers.metrics.middlewares=loki-stripprefix,auth@docker"
+
+      # services used by routes
+      - "traefik.http.services.wellknown.loadbalancer.server.port=8080"
+      - "traefik.http.services.loki.loadbalancer.server.port=3100"
+      
+      # middlewares used by routes
+      #loki/password (with $$ escapes)
+      - "traefik.http.middlewares.auth.basicauth.users=loki:$$apr1$$GuFbxxSF$$kOm1PYEpAppW8k4BQyrW6." 
+      - "traefik.http.middlewares.loki-stripprefix.stripprefix.prefixes=/loki"
+
+volumes:
+  prometheus_data:
+    external: true
+  grafana_data:
+    external: true
+  loki_data:
+    external: true
+  traefik:
+  alertmanager-data:

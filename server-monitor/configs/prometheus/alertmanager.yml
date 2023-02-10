@@ -1,0 +1,25 @@
+route:
+  receiver: 'default-receiver'
+  group_by: [alertname]
+  routes:
+  - receiver: quiet-telegram
+    repeat_interval: 24h
+    continue: false
+    matchers:
+      - frequency=daily
+  - receiver: telegram
+receivers:
+  - name: telegram
+    telegram_configs:
+    - api_url: https://api.telegram.org
+      bot_token: PutYourBotTokenHere
+      chat_id: PutYourChatIdHere
+      parse_mode: HTML
+  - name: quiet-telegram
+    telegram_configs:
+    - api_url: https://api.telegram.org
+      bot_token: PutYourBotTokenHere
+      chat_id: PutYourChatIdHere
+      parse_mode: HTML
+      send_resolved: false
+  - name: 'default-receiver'

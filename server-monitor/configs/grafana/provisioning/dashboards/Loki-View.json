@@ -1,0 +1,309 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 1,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "noValue": "Error",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 300
+              },
+              {
+                "color": "dark-red",
+                "value": 500
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ARB_API · latest_block"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": true,
+                    "title": "",
+                    "url": "https://arbiscan.io/block/${__value.numeric}"
+                  }
+                ]
+              },
+              {
+                "id": "displayName",
+                "value": "Latest Arbitrum Block"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Block Differential"
+            },
+            "properties": [
+              {
+                "id": "color"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "latest_block"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Latest Orchestrator Block"
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": true,
+                    "title": "",
+                    "url": "https://arbiscan.io/block/${__value.numeric}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 9,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "9.3.0-beta1",
+      "targets": [
+        {
+          "body": "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\", true],\"id\":1}",
+          "cacheDurationSeconds": 0,
+          "datasource": {
+            "type": "marcusolsson-json-datasource",
+            "uid": "7uw6x7O4z"
+          },
+          "fields": [
+            {
+              "jsonPath": "$parseInteger($.result.transactions[0].blockNumber, '0')",
+              "language": "jsonata",
+              "name": "last_l2_block",
+              "type": "number"
+            }
+          ],
+          "headers": [
+            [
+              "Content-Type",
+              "application/json"
+            ]
+          ],
+          "hide": false,
+          "method": "POST",
+          "queryParams": "",
+          "refId": "ARB_API",
+          "urlPath": ""
+        },
+        {
+          "cacheDurationSeconds": 300,
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "builder",
+          "expr": "max(last_over_time({type=\"livepeer\"} |~ `block_watcher` | logfmt | unwrap to [5m]))",
+          "fields": [
+            {
+              "jsonPath": ""
+            }
+          ],
+          "hide": false,
+          "legendFormat": "last_orch_block",
+          "method": "GET",
+          "queryParams": "",
+          "queryType": "instant",
+          "refId": "LOKI",
+          "urlPath": ""
+        }
+      ],
+      "title": "Block Metrics",
+      "transformations": [
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "latest_block",
+            "mode": "reduceRow",
+            "reduce": {
+              "include": [
+                "Value #LOKI",
+                "ARB_API last_l2_block"
+              ],
+              "reducer": "lastNotNull"
+            },
+            "replaceFields": true
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "ARB_API latest_block",
+                "latest_block"
+              ]
+            }
+          }
+        },
+        {
+          "id": "concatenate",
+          "options": {}
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "Block Differential",
+            "binary": {
+              "left": "ARB_API · latest_block",
+              "operator": "-",
+              "reducer": "sum",
+              "right": "latest_block"
+            },
+            "mode": "binary",
+            "reduce": {
+              "reducer": "sum"
+            },
+            "replaceFields": false
+          }
+        }
+      ],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "",
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "id": 6,
+      "maxDataPoints": 1,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": false,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "pluginVersion": "9.3.0-beta1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "builder",
+          "expr": "{type=\"livepeer\"} |~ `block_watcher`",
+          "maxLines": 20,
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Last Block Read Details",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {}
+        }
+      ],
+      "type": "logs"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 37,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Loki View",
+  "uid": "KAigRGdVk",
+  "version": 1,
+  "weekStart": ""
+}

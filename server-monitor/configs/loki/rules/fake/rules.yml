@@ -1,0 +1,59 @@
+groups:
+  - name: system-alerting
+    rules:
+      - alert: BlockWatchFailure
+        expr: >-
+          count_over_time({type="livepeer"} |= `blockwatch.Watcher error encountered` [5m]) > 5
+        for: 10m
+        labels: 
+          severity: critical
+        annotations:
+          description: '{{ $labels.instance }} of job {{ $labels.job }} is having errors keeping blocks synchronized.'
+          summary: 'BlockWatch Errors - Instance {{ $labels.instance }}'
+      - alert: OrchestratorOverloaded
+        expr: >-
+          count_over_time({type="livepeer"} |= `OrchestratorBusy` [5m]) > 5
+        for: 10m
+        labels: 
+          severity: critical
+        annotations:
+          description: '{{ $labels.instance }} of job {{ $labels.job }} appears to be overloaded and processing more sessions than it can handle.'
+          summary: 'Orchestrator Busy - Instance {{ $labels.instance }}'
+      - alert: GasPriceTooHigh
+        expr: >-
+          count_over_time({type="livepeer"}[1h] |~ "gas required exceeds allowance" ) > 5
+        for: 10m
+        labels: 
+          severity: warning
+        annotations:
+          summary: 'Transactions Failed Due to High Gas Prices Instance {{ $labels.instance }}'
+      - alert: FailedSegementUpload
+        expr: >-
+          count_over_time({type="livepeer"}[1h] |~ "Could not upload segment" ) > 5
+        for: 10m
+        labels: 
+          severity: warning
+        annotations:
+          summary: 'Segments Failed to Upload - Instance {{ $labels.instance }}'
+  - name: ticket-alerting
+    rules:
+      - alert: InsufficientFunds
+        expr: >-
+          count_over_time({type="livepeer"} |= `insufficient funds` [5m]) > 2
+        for: 20m
+        labels: 
+          severity: critical
+        annotations:
+          description: '{{ $labels.instance }} of job {{ $labels.job }} cannot redeem tickets.  You need to deposit additional gas.'
+          summary: 'Error Redeeming Ticket - Instance {{ $labels.instance }}'
+      - alert: TicketExpired
+        expr: >-
+          count_over_time({type="livepeer"} |= `ticket is expired` [5m]) > 2
+        for: 20m
+        labels: 
+          severity: warning
+        annotations:
+          description: '{{ $labels.instance }} of job {{ $labels.job }} has an expired ticket.  This may resolve on its own.  If not, visit: https://forum.livepeer.org/t/fix-for-repeated-error-redeeming-err-failed-to-estimate-gas-needed-errors/1123'
+          summary: 'Expired Ticket Encountered - Instance {{ $labels.instance }}'
+        
+        

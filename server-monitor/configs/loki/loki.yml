@@ -1,0 +1,78 @@
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+
+common:
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    instance_addr: 0.0.0.0
+    kvstore:
+      store: inmemory
+
+# data retention configurations  
+limits_config:
+  # how long to keep data around
+  retention_period: 30d
+compactor:
+  retention_enabled: true
+  working_directory: /loki/compactor
+  compaction_interval: 10m
+  # two days retention policy of data marked for deletion 
+  # allowing a small window for recovery
+  retention_delete_delay: 48h
+  # number of Go routines running during compaction
+  retention_delete_worker_count: 5
+  
+# rule configurations
+ruler:
+  alertmanager_url: http://alertmanager:9093
+  storage:
+    type: local
+    local:
+      directory: /etc/loki/rules
+  rule_path: /loki/rules-temp
+  ring:
+    kvstore:
+      store: inmemory
+  enable_api: true
+  enable_alertmanager_v2: true
+
+#table configs
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: boltdb-shipper
+      object_store: filesystem
+      schema: v11
+      index:
+        prefix: index_
+        # each storage period stored before a new periodic-table is created
+        # BoltDB shipper works best with 24h periodic index files. It is a Loki
+        # requirement to have index period set to 24h for either active or upcoming usage of boltdb-shipper
+        # https://grafana.com/docs/loki/latest/operations/storage/boltdb-shipper/#single-store-loki-boltdb-shipper-index-type
+        period: 24h
+
+# Config when running in single instance to avoid getting "too many outstanding requests" errors
+# https://github.com/grafana/loki/issues/4613#issuecomment-1021421653
+query_range:
+  parallelise_shardable_queries: false
+
+# By default, Loki will send anonymous, but uniquely-identifiable usage and configuration
+# analytics to Grafana Labs. These statistics are sent to https://stats.grafana.org/
+#
+# Statistics help us better understand how Loki is used, and they show us performance
+# levels for most users. This helps us prioritize features and documentation.
+# For more information on what's sent, look at
+# https://github.com/grafana/loki/blob/main/pkg/usagestats/stats.go
+# Refer to the buildReport method to see what goes into a report.
+#
+# If you would like to disable reporting, uncomment the following lines:
+analytics:
+  reporting_enabled: false

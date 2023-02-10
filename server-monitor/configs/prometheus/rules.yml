@@ -1,0 +1,36 @@
+groups:
+  - name: up-alerting
+    rules:
+      - alert: InstanceDown
+        expr: >-
+          up{job=~"livepeer"} == 0
+        for: 5m
+        labels: 
+          severity: critical
+        annotations:
+          summary: 'Orchestrator {{ $labels.instance }} is down'
+      - alert: HighLoadSessionCapacity
+        expr: >-
+          (sum(livepeer_current_sessions_total) / sum(livepeer_max_sessions_total) * 100) > 85
+        for: 10m
+        labels: 
+          severity: warning
+        annotations:
+          summary: 'Orchestrator under heavy load for at least 10 minutes.  Current capacity is {{ $value | printf "%.1f"  }}% utilized (sessions: {{ printf `sum(livepeer_current_sessions_total)` | query | first | value }} current / {{ printf `sum(livepeer_max_sessions_total)` | query | first | value }} max).'
+      - alert: ProcessTooManyRestarts
+        expr: changes(process_start_time_seconds[15m]) > 2
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "A process has too many restarts (instance -> {{ $labels.instance }} || restarts -> {{ $value }})"
+  - name: info-alerts
+    rules:
+      - alert: DailyWinningTicketSummary  # send summary at 4pm UTC daily with a 5 minute window for prom to evaluate/fire the rule
+        expr: >-
+          (sum(delta(livepeer_winning_tickets_recv[1d])) > 0) and on () (hour() == 21) and on () (minute() < 5)
+        labels: 
+          severity: info
+          frequency: daily # send to the daily receiver route
+        annotations:
+          summary: 'Received an increase of ~{{ printf `round(sum(delta(livepeer_winning_tickets_recv[1d])))` | query | first | value }} winning tickets in the past 24 hours for a total redeemed value of {{ printf `sum(delta(livepeer_value_redeemed[1d]))/10^9` | query | first | value | printf "%.6f" }} ETH.'
