@@ -1,5 +1,5 @@
 ![Power Up](images/power_up.png "Power Up")
-# SpeeedyBird Livepeer Monitor
+# SpeedyBird Livepeer Monitor
 Hi! :baby_chick::baby_chick: This repo contains two docker compose "projects".
 
 One is called "client-monitor".  It is a simple compose file and associated Promtail config.  It is used to connect to the server-monitor.

@@ -1,7 +1,9 @@
 
 ![Power Up](images/power_up.png "Power Up")
 
-This guide covers all you need to set up an expandable, one-stop shop monitoring system using open source tools. The primary audience of this guide is for Livepeer Orchestrators even if you have a monitoring system in place or not. When completed, you will be able to view all metrics and logs in one place as well as receive alerts when your node is not operating properly.
+This guide covers all you need to set up an expandable, one-stop shop monitoring system using open source tools. The primary audience of this guide is for Livepeer Orchestrators, even if you have a monitoring system in place or not.  Once you complete this guide, you will be able to view all metrics and logs in one place as well as receive alerts when your node is not operating properly.
+
+If you haven't setup a Livepeer Orchestrator, you can explore a variety of resources and guides about Livepeer Orchestrators in the [project's documentation](https://docs.livepeer.org/guides/orchestrating).
 
 **Requirements**
 
